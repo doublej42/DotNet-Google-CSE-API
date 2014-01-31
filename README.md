@@ -8,3 +8,6 @@ Example Usage:
 var gs = new GoogleSearch(YOUR SEARCH ID); 
 var results = gs.Search("SEARCH TERM");
 ```
+
+
+Install via https://www.nuget.org/packages/GoogleCustomSearchEngine/
