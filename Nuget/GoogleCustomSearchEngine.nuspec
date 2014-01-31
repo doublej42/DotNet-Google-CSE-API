@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>GoogleCustomSearchEngine</id>
+    <version>1.0.0</version>
+    <authors>jjacob</authors>
+    <owners>jjacob</owners>
+    <projectUrl>https://github.com/doublej42/DotNet-Google-CSE-API</projectUrl>
+    <iconUrl>http://static3.wikia.nocookie.net/__cb20100520131748/logopedia/images/5/5c/Google_logo.png</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Fetches Google search results from a custom Google search engine.</description>
+	<summary>Fetches Google search results from a custom Google search engine.</summary>
+    <releaseNotes>First Release.</releaseNotes>
+    <tags>Google search</tags>
+  </metadata>
+</package>
