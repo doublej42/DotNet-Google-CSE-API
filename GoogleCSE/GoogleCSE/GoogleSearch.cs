@@ -54,7 +54,8 @@ namespace GoogleCSE
         /// <param name="extraOptions">(optional)If you need to supply more custom options passed to google please include them here. These options will override any defaults</param>
         /// <param name="pageSize">(optional) Numeber of results per page, max and default are 20</param>
         /// <param name="maxPages">(optional) Number of pages to grab. Larger number will be slower.  Also each page is a new search on your paid search limit.</param>
-        public GoogleSearch(string cx, string hl = "en",Dictionary<string, string> extraOptions = null,int pageSize = 20, int maxPages = 20)
+        /// <param name="method">(optional) API Used to gather the results. Default is XML https://developers.google.com/custom-search/docs/xml_results </param>
+        public GoogleSearch(string cx, string hl = "en",Dictionary<string, string> extraOptions = null,int pageSize = 20, int maxPages = 20, string method = "XML")
         {
             Options["client"] = "google-csbe";
             Options["output"] = "xml_no_dtd";
