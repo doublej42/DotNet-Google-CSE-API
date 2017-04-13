@@ -48,6 +48,10 @@ namespace SearchUnitTest
             Assert.IsFalse(gs.Options.ContainsKey("start"));
             Assert.IsTrue(results.Any());
             Assert.IsTrue(results.Count == 100);
+
+            gs.Options["start"] = "85"; // first results is 85th, so 16
+            results = gs.Search("the");
+            Assert.IsTrue(results.Count == 16);
         }
 
 

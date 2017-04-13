@@ -150,6 +150,23 @@ namespace GoogleCSE
                     Options["prettyPrint"] = "false";// we don't need the result human readable
                     break;
             }
+            if (Options.ContainsKey("start"))
+            {
+                int start;
+                if (int.TryParse(Options["start"], out start))
+                {
+                    if (start >= 100)
+                    {
+                        throw new ArgumentOutOfRangeException();
+                    }
+                    start = start - 1; // zero indexed
+                    var num = int.Parse(Options["num"]);
+                    if (start + num > 100) //Google 100 result limit cases error 400
+                    {
+                        Options["num"] = (100 - start).ToString();
+                    }
+                }
+            }
             for (var i = 0; i < Options.Keys.Count; i++)
             {
                 var key = Options.Keys.ElementAt(i);
@@ -288,9 +305,16 @@ namespace GoogleCSE
                             oldstart = Options["start"];
                         }
                         Options["start"] = nextPage.Attribute("startIndex").Value;
-                        var nextUrl = QueryUrl();
-                        var theRestOfThePages = RecursiveResults(nextUrl, 2);
-                        ret.Results.AddRange(theRestOfThePages);
+                        try
+                        {
+                            var nextUrl = QueryUrl();
+                            var theRestOfThePages = RecursiveResults(nextUrl, 2);
+                            ret.Results.AddRange(theRestOfThePages);
+                        }
+                        catch (ArgumentOutOfRangeException e)
+                        {
+                            //it won't search past 100 results
+                        }
                         if (oldstart != null)
                         {
                             Options["start"] = oldstart;
@@ -346,9 +370,16 @@ namespace GoogleCSE
                                 oldstart = Options["start"];
                             }
                             Options["start"] = nextPage.Attribute("startIndex").Value;
-                            var nextUrl = QueryUrl();
-                            var theRestOfThePages = RecursiveResults(nextUrl, ++depth);
-                            ret.AddRange(theRestOfThePages);
+                            try
+                            {
+                                var nextUrl = QueryUrl();
+                                var theRestOfThePages = RecursiveResults(nextUrl, 2);
+                                ret.AddRange(theRestOfThePages);
+                            }
+                            catch (ArgumentOutOfRangeException e)
+                            {
+                                //it won't search past 100 results
+                            }
                             if (oldstart != null)
                             {
                                 Options["start"] = oldstart;
