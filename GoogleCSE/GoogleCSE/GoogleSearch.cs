@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -60,14 +61,17 @@ namespace GoogleCSE
 
 // ReSharper disable InconsistentNaming
     /// <summary>
-    /// The two api's used for searching google. The CSE is the default. See GoogleSearch constructor for more information.
+    /// The two api's used for searching Google. The CSE is the default. See GoogleSearch constructor for more information.
+    /// XML will not longer as Site Search is shut down.
     /// </summary>
     public enum GoogleSearchMethod { XML, CSE};
-// ReSharper restore InconsistentNaming
+    // ReSharper restore InconsistentNaming
 
     /// <summary>
     /// Class to instantiate for searching a Google custom search engine. You will need to provide your cx
     /// XML Docs: https://developers.google.com/custom-search/docs/xml_results
+    /// See Also Google api docs at : https://developers.google.com/custom-search/json-api/v1/overview
+    /// API Details: https://developers.google.com/custom-search/json-api/v1/reference/cse/list
     /// You can get your CSE from https://www.google.com/cse/
     /// </summary>
     public class GoogleSearch
@@ -95,11 +99,11 @@ namespace GoogleCSE
         /// <param name="pageSize">(optional) Number of results per page, Default are 10 but there is a max of 20 with the XMl API</param>
         /// <param name="maxPages">(optional) Number of pages to grab. Larger number will be slower.  Also each page is a new search on your paid search limit.</param>
         /// <param name="start">The result offset, use to page through results. WARNING: CSE starts at 1 but XML starts at zero. If you want the 11th result (page 2) on CSE set this to 11. On XML set this to 10 </param>
-        /// <param name="method">(optional) API Used to gather the results. Default isCSE https://developers.google.com/custom-search/json-api/v1/reference/cse/list the other option is  XML https://developers.google.com/custom-search/docs/xml_results 
-        /// Only the CSA interface gives promotions as a separate object. Not this is a change of default from old versions.
+        /// <param name="method">(optional) API Used to gather the results. Default isCSE https://developers.google.com/custom-search/json-api/v1/reference/cse/list the other option was XML but is no longer supported by google. https://developers.google.com/custom-search/docs/xml_results 
+        /// Only the CSE interface gives promotions as a separate object. Note this is a change of default from old versions.
         /// </param>
-        /// <param name="key">Api Key, only needed if you are using the CSE interface</param>
-        public GoogleSearch(string cx, string hl = "en", Dictionary<string, string> extraOptions = null, int pageSize = 10, int maxPages = 20, int start = 1, GoogleSearchMethod method = GoogleSearchMethod.CSE, string key = "")
+        /// <param name="key">Api Key https://console.developers.google.com/apis/credentials</param>
+        public GoogleSearch(string cx, string key, string hl = "en", Dictionary<string, string> extraOptions = null, int pageSize = 10, int maxPages = 20, int start = 1, GoogleSearchMethod method = GoogleSearchMethod.CSE)
         {
             
             Options["client"] = "google-csbe";
@@ -116,6 +120,11 @@ namespace GoogleCSE
                 Options["key"] = key;
             }
             _maxPages = maxPages;
+            if (_maxPages * pageSize > 100)
+            {
+                //will crash if you ask for more than the first 100 results. This is a Google change.
+                _maxPages = 100 / pageSize;
+            }
             Method = method;
             if (extraOptions == null) return;
             foreach (var option in extraOptions)
@@ -134,14 +143,11 @@ namespace GoogleCSE
             switch (Method)
             {
                 case GoogleSearchMethod.XML:
-                    sb.Append(GoogleUrl);
-                    break;
+                    throw new ArgumentException("The XML API is no longer available as it was only for Google Site Search");
                 case GoogleSearchMethod.CSE:
                     sb.Append(GoogleCseUrl);
                     Options["alt"] = "ATOM";//force atom. 
                     Options["prettyPrint"] = "false";// we don't need the result human readable
-                    //Options.Add("alt","ATOM");
-                    //Options.Add("prettyPrint","false"); 
                     break;
             }
             for (var i = 0; i < Options.Keys.Count; i++)
@@ -227,12 +233,13 @@ namespace GoogleCSE
                     var searchInformation = data.Element(nsCse + "searchInformation");
                     if (searchInformation != null)
                     {
+                        var culture = new CultureInfo("en-us");
                         var totalResults = searchInformation.Element(nsCse + "totalResults");
                         if (totalResults != null)
-                            ret.TotalResults = long.Parse(totalResults.Value);
+                            ret.TotalResults = long.Parse(totalResults.Value, culture);
                         var searchTime = searchInformation.Element(nsCse + "searchTime");
                         if (searchTime != null)
-                            ret.SearchTime = double.Parse(searchTime.Value);
+                            ret.SearchTime = double.Parse(searchTime.Value,culture);
                     }
                     //Get labels
                     foreach (var label in data.Descendants(nsCse + "facet"))
@@ -240,8 +247,8 @@ namespace GoogleCSE
                         var item = label.Element(nsCse + "item");
                         if (item != null)
                         {
-                            var key = item.Attribute("label").Value;
-                            var value = item.Attribute("anchor").Value;
+                            var key = item.Attribute("label")?.Value;
+                            var value = item.Attribute("anchor")?.Value;
                             ret.Labels[key] = value;
                         }
                     }
@@ -252,17 +259,14 @@ namespace GoogleCSE
                         var title = promotion.Element(nsAtom + "title");
                         if (title != null) tmpResult.Title = title.Value;
                         var link = promotion.Element(nsAtom + "link");
-                        if (link != null)
+                        if (link?.Attribute("href") != null)
                         {
-                            if (link.Attribute("href") != null)
-                            {
-                                tmpResult.Url = link.Attribute("href").Value;
-                            }
+                            tmpResult.Url = link.Attribute("href")?.Value;
                         }
                         var description = promotion.Element(nsCse + "bodyLine");
                         if (description != null)
                         {
-                            tmpResult.Description = description.Attribute("title").Value;
+                            tmpResult.Description = description.Attribute("title")?.Value;
                         }
                         ret.Promotions.Add(tmpResult);
                     }
@@ -300,59 +304,7 @@ namespace GoogleCSE
             }
             if (Method == GoogleSearchMethod.XML)
             {
-                var xResults = XDocument.Load(url);
-                //get labels
-                foreach (var label in xResults.Descendants("FacetItem"))
-                {
-                    var key = label.Element("label");
-                    if (key != null)
-                    {
-                        var lblDesc = label.Element("anchor_text");
-                        if (lblDesc != null)
-                        {
-                            ret.Labels[key.Value] = lblDesc.Value;
-                        }
-                    }
-                }
-
-
-                var data = xResults.Descendants("RES").FirstOrDefault();
-                if (data == null) return ret;
-                var totalResults = data.Element("M");
-                if (totalResults != null)
-                {
-                    ret.TotalResults = long.Parse(totalResults.Value);
-                }
-                //ret.Results.AddRange(data.Descendants("R").Select(ParseXmlResult));
-                foreach (var r in data.Descendants("R"))
-                {
-                    var tmpResults = ParseXmlResult(r);
-                    var slR = r.Element("SL_RESULTS");
-                    if (slR != null)
-                    {
-                        //promotion
-                        var bodyLine = slR.Descendants("BODY_LINE").FirstOrDefault();
-                        if (bodyLine != null)
-                        {
-                            var t = bodyLine.Descendants("T").FirstOrDefault();
-                            if (t != null) tmpResults.Description = t.Value;
-                            ret.Promotions.Add(tmpResults);
-                        }
-                        
-                    }
-                    else
-                    {
-                        ret.Results.Add(tmpResults);
-                    }
-                }
-                var nb = data.Element("NB");
-                if (nb == null) return ret;
-                var nu = nb.Element("NU");
-                if (nu == null) return ret;
-                if (1 < _maxPages)
-                {
-                    ret.Results.AddRange(RecursiveResults("http://www.google.com" + nu.Value,2));
-                }
+                throw new ArgumentException("The XML API is no longer available as it was only for Google Site Search");
             }
             return ret;
         }
@@ -368,65 +320,46 @@ namespace GoogleCSE
         private List<GoogleSearchResult> RecursiveResults(string url, int depth = 1)
         {
             var ret = new List<GoogleSearchResult>();
-            if (Method == GoogleSearchMethod.XML)
+            switch (Method)
             {
-                var xResults = XDocument.Load(url);
-                var data = xResults.Descendants("RES").FirstOrDefault();
-                if (data == null) return ret;
-                foreach (var r in data.Descendants("R"))
-                {
-                    var tmpResults = ParseXmlResult(r);
-                    var slR = r.Element("SL_RESULTS");
-                    if (slR == null) // ignore promotions
+                case GoogleSearchMethod.XML:
+                    throw new ArgumentException("The XML API is no longer available as it was only for Google Site Search");
+                case GoogleSearchMethod.CSE:
+
+                    var xResults = XDocument.Load(url);
+                    var data = xResults.Root;
+                    if (data == null)
                     {
-                        ret.Add(tmpResults);
+                        return ret;
                     }
-                }
-                var nb = data.Element("NB");
-                if (nb == null) return ret;
-                var nu = nb.Element("NU");
-                if (nu == null) return ret;
-                if (depth < _maxPages)
-                {
-                    ret.AddRange(RecursiveResults("http://www.google.com" + nu.Value, ++depth));
-                }
-            }
-            if (Method == GoogleSearchMethod.CSE)
-            {
-                
-                var xResults = XDocument.Load(url);
-                var data = xResults.Root;
-                if (data == null)
-                {
-                    return ret;
-                }
-                var nsOpenSearch = data.GetNamespaceOfPrefix("opensearch");
-                var nsAtom = data.GetDefaultNamespace();
-                ret.AddRange(data.Descendants(nsAtom + "entry").Select(ParseCseResult));
-                if (depth < _maxPages)
-                {
-                    var nextPage = data.Elements(nsOpenSearch + "Query").FirstOrDefault(e => e.Attribute("role").Value == "cse:nextPage");
-                    if (nextPage != null)
+                    var nsOpenSearch = data.GetNamespaceOfPrefix("opensearch");
+                    var nsAtom = data.GetDefaultNamespace();
+                    ret.AddRange(data.Descendants(nsAtom + "entry").Select(ParseCseResult));
+                    if (depth < _maxPages)
                     {
-                        string oldstart = null;
-                        if (Options.ContainsKey("start"))
+                        var nextPage = data.Elements(nsOpenSearch + "Query").FirstOrDefault(e => e.Attribute("role").Value == "cse:nextPage");
+                        if (nextPage != null)
                         {
-                            oldstart = Options["start"];
-                        }
-                        Options["start"] = nextPage.Attribute("startIndex").Value;
-                        var nextUrl = QueryUrl();
-                        var theRestOfThePages = RecursiveResults(nextUrl, ++depth);
-                        ret.AddRange(theRestOfThePages);
-                        if (oldstart != null)
-                        {
-                            Options["start"] = oldstart;
-                        }
-                        else
-                        {
-                            Options.Remove("start");
+                            string oldstart = null;
+                            if (Options.ContainsKey("start"))
+                            {
+                                oldstart = Options["start"];
+                            }
+                            Options["start"] = nextPage.Attribute("startIndex").Value;
+                            var nextUrl = QueryUrl();
+                            var theRestOfThePages = RecursiveResults(nextUrl, ++depth);
+                            ret.AddRange(theRestOfThePages);
+                            if (oldstart != null)
+                            {
+                                Options["start"] = oldstart;
+                            }
+                            else
+                            {
+                                Options.Remove("start");
+                            }
                         }
                     }
-                }
+                    break;
             }
 
             return ret;

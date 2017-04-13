@@ -17,3 +17,4 @@ var fortyResults = gs2.SearchDetailed("SEARCH TERM");
 
 
 Install via https://www.nuget.org/packages/GoogleCustomSearchEngine/
+
