@@ -39,6 +39,29 @@ namespace SearchUnitTest
         }
 
 
+
+
+        [TestMethod]
+        public void TestUserIpCse()
+        {
+            var gs = new GoogleSearch(TestConfigs.Cseid, maxPages: 1, pageSize: 5, key: TestConfigs.Key, method: GoogleSearchMethod.CSE,userIp: "192.168.1.101" );
+            var results = gs.Search("dam");
+            Assert.IsTrue(results.Any());
+            Assert.IsTrue(results.Count == 5);
+        }
+
+
+        [TestMethod]
+        public void TestSpecialCaseCse()
+        {
+            var gs = new GoogleSearch(TestConfigs.Cseid, maxPages: 1, pageSize: 5, key: TestConfigs.Key);
+            gs.Options.Add("fileType","pdf");
+            var results = gs.Search("dam");
+            Assert.IsTrue(results.Any());
+            Assert.IsTrue(results.Count == 5);
+            Assert.IsTrue(results.All(r => r.Url.Contains(".pdf")));
+        }
+
         [TestMethod]
         public void TestLargeCse()
         {

@@ -96,14 +96,16 @@ namespace GoogleCSE
         /// <param name="cx">Your search engine ID from https://www.google.com/cse/ </param>
         /// <param name="hl">(optional) language</param>
         /// <param name="extraOptions">(optional)If you need to supply more custom options passed to google please include them here. These options will override any defaults</param>
-        /// <param name="pageSize">(optional) Number of results per page, Default are 10 but there is a max of 20 with the XMl API</param>
-        /// <param name="maxPages">(optional) Number of pages to grab. Larger number will be slower.  Also each page is a new search on your paid search limit.</param>
+        /// <param name="pageSize">(optional) Number of results per page, Default are 10, this is also the max</param>
+        /// <param name="maxPages">(optional) Number of pages to grab. Larger number will be slower.  Also each page is a new search on your paid search limit. Default is 10 as this will give you the max 100 results.</param>
         /// <param name="start">The result offset, use to page through results. WARNING: CSE starts at 1 but XML starts at zero. If you want the 11th result (page 2) on CSE set this to 11. On XML set this to 10 </param>
         /// <param name="method">(optional) API Used to gather the results. Default isCSE https://developers.google.com/custom-search/json-api/v1/reference/cse/list the other option was XML but is no longer supported by google. https://developers.google.com/custom-search/docs/xml_results 
         /// Only the CSE interface gives promotions as a separate object. Note this is a change of default from old versions.
         /// </param>
-        /// <param name="key">Api Key https://console.developers.google.com/apis/credentials</param>
-        public GoogleSearch(string cx, string key, string hl = "en", Dictionary<string, string> extraOptions = null, int pageSize = 10, int maxPages = 20, int start = 1, GoogleSearchMethod method = GoogleSearchMethod.CSE)
+        /// <param name="key">Api Key , needed if you want more than 100 queries per day https://console.developers.google.com/apis/credentials </param>
+        /// <param name="userIp">The Users Ip for imposing per user limits https://support.google.com/cloud/answer/7035610 </param>
+        /// <param name="quotaUser">The users unique name for capping by non web request. https://support.google.com/cloud/answer/7035610 </param>
+        public GoogleSearch(string cx, string key, string hl = "en", Dictionary<string, string> extraOptions = null, int pageSize = 10, int maxPages = 10, int start = 1, GoogleSearchMethod method = GoogleSearchMethod.CSE, string userIp =  null, string quotaUser = null)
         {
             
             Options["client"] = "google-csbe";
@@ -118,6 +120,14 @@ namespace GoogleCSE
             if (!string.IsNullOrEmpty(key))
             {
                 Options["key"] = key;
+            }
+            if (!string.IsNullOrEmpty(userIp))
+            {
+                Options["userIP"] = key;
+            }
+            if (!string.IsNullOrEmpty(quotaUser))
+            {
+                Options["quotaUser"] = key;
             }
             _maxPages = maxPages;
             if (_maxPages * pageSize > 100)
@@ -349,9 +359,18 @@ namespace GoogleCSE
                 case GoogleSearchMethod.XML:
                     throw new ArgumentException("The XML API is no longer available as it was only for Google Site Search");
                 case GoogleSearchMethod.CSE:
-
-                    var xResults = XDocument.Load(url);
-                    var data = xResults.Root;
+                    XElement data = null;
+                    try
+                    {
+                        var xResults = XDocument.Load(url);
+                        data = xResults.Root;
+                    }
+                    catch (Exception e)
+                    {
+                        //This happens if you reach your daily or user limit 
+                    }
+                    
+                    
                     if (data == null)
                     {
                         return ret;
