@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
     <metadata>
         <id>GoogleCustomSearchEngine</id>
-        <version>3.0.0</version>
+        <version>3.0.1</version>
         <authors>jjacob</authors>
         <owners>jjacob</owners>
         <projectUrl>https://github.com/doublej42/DotNet-Google-CSE-API</projectUrl>
@@ -11,10 +11,12 @@
         <description>Fetches Google search results from a custom Google search engine.</description>
         <summary>Fetches Google search results from a custom Google search engine.
 
-Uses uses either XML or ATOM (CSE) api. Make basic meta data easily available.</summary>
-        <releaseNotes>Updated to use Atom (CSE) api as well as XML and provide more meta data.</releaseNotes>
+Uses uses ATOM (CSE) api. Make basic meta data easily available.</summary>
+        <releaseNotes>Warning 3.0 and newer no longer support old site search xml api.</releaseNotes>
         <tags>Google search</tags>
     </metadata>
     <files>
+        <file src="lib\net45\GoogleCSE.dll" target="lib\GoogleCSE.dll" />
+        <file src="lib\net45\GoogleCSE.pdb" target="lib\GoogleCSE.pdb" />
     </files>
 </package>

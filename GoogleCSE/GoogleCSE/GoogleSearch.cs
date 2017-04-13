@@ -321,7 +321,8 @@ namespace GoogleCSE
                             var theRestOfThePages = RecursiveResults(nextUrl, 2);
                             ret.Results.AddRange(theRestOfThePages);
                         }
-                        catch (ArgumentOutOfRangeException e)
+                        // ReSharper disable once UnusedVariable
+                        catch (ArgumentOutOfRangeException)
                         {
                             //it won't search past 100 results
                         }
@@ -365,7 +366,7 @@ namespace GoogleCSE
                         var xResults = XDocument.Load(url);
                         data = xResults.Root;
                     }
-                    catch (Exception e)
+                    catch (Exception)
                     {
                         //This happens if you reach your daily or user limit 
                     }
@@ -395,7 +396,7 @@ namespace GoogleCSE
                                 var theRestOfThePages = RecursiveResults(nextUrl, 2);
                                 ret.AddRange(theRestOfThePages);
                             }
-                            catch (ArgumentOutOfRangeException e)
+                            catch (ArgumentOutOfRangeException)
                             {
                                 //it won't search past 100 results
                             }
