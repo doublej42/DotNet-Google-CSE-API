@@ -26,6 +26,14 @@ namespace SearchUnitTest
         }
 
 
+        [TestMethod]
+        public void TestNoResults()
+        {
+            var gs = new GoogleSearch(TestConfigs.Cseid, maxPages: 2, pageSize: 10, key: TestConfigs.Key);
+            var results = gs.Search("dfhgjkdfhgdfjkbgjkerbgdfuibvefuibvuybruyfbruo");
+            Assert.IsFalse(gs.Options.ContainsKey("start"));
+            Assert.IsFalse(results.Any());
+        }
 
 
         [TestMethod]

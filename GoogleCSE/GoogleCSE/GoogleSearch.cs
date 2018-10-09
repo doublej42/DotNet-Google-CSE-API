@@ -239,8 +239,12 @@ namespace GoogleCSE
             GoogleJsonFormat jResult = null;
             try
             {
-                var json = new WebClient().DownloadString(url);
-                jResult = JsonConvert.DeserializeObject<GoogleJsonFormat>(json);
+                using (var webClient = new WebClient())
+                {
+                    webClient.Encoding = Encoding.UTF8;
+                    var json = webClient.DownloadString(url);
+                    jResult = JsonConvert.DeserializeObject<GoogleJsonFormat>(json);
+                }
             }
             catch (Exception)
             {
@@ -250,13 +254,16 @@ namespace GoogleCSE
             if (jResult != null)
             {
                 //handle the first page
-                ret.Results = jResult.items.Select(r => new GoogleSearchResult()
+                if (jResult.items != null)
                 {
-                    Mime = r.mime,
-                    Url = r.link,
-                    Title = r.title,
-                    Description = r.snippet
-                }).ToList();
+                    ret.Results = jResult.items.Select(r => new GoogleSearchResult()
+                    {
+                        Mime = r.mime,
+                        Url = r.link,
+                        Title = r.title,
+                        Description = r.snippet
+                    }).ToList();
+                }
 
                 if (jResult.queries.nextPage != null && jResult.queries.nextPage.Any())
                 {
@@ -329,8 +336,12 @@ namespace GoogleCSE
             GoogleJsonFormat jResult = null;
             try
             {
-                var json = new WebClient().DownloadString(url);
-                jResult = JsonConvert.DeserializeObject<GoogleJsonFormat>(json);
+                using (var webClient = new WebClient())
+                {
+                    webClient.Encoding = Encoding.UTF8;
+                    var json = webClient.DownloadString(url);
+                    jResult = JsonConvert.DeserializeObject<GoogleJsonFormat>(json);
+                }
             }
             catch (Exception)
             {
@@ -339,13 +350,16 @@ namespace GoogleCSE
 
             if (jResult != null)
             {
-                ret = jResult.items.Select(r => new GoogleSearchResult()
+                if (jResult.items != null)
                 {
-                    Mime = r.mime,
-                    Url = r.link,
-                    Title = r.title,
-                    Description = r.snippet
-                }).ToList();
+                    ret = jResult.items.Select(r => new GoogleSearchResult()
+                    {
+                        Mime = r.mime,
+                        Url = r.link,
+                        Title = r.title,
+                        Description = r.snippet
+                    }).ToList();
+                }
 
                 if (depth < _maxPages && jResult.queries.nextPage != null && jResult.queries.nextPage.Any())
                 {
