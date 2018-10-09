@@ -1,7 +1,9 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Web;
 using System.Xml.Linq;
@@ -59,12 +61,11 @@ namespace GoogleCSE
     }
 
 
-// ReSharper disable InconsistentNaming
+    // ReSharper disable InconsistentNaming
     /// <summary>
-    /// The two api's used for searching Google. The CSE is the default. See GoogleSearch constructor for more information.
-    /// XML will not longer as Site Search is shut down.
+    /// No longer used, left in as to not change the api.
     /// </summary>
-    public enum GoogleSearchMethod { XML, CSE};
+    public enum GoogleSearchMethod { XML, CSE };
     // ReSharper restore InconsistentNaming
 
     /// <summary>
@@ -79,7 +80,7 @@ namespace GoogleCSE
         private const string GoogleUrl = "http://www.google.com/search";
         private const string GoogleCseUrl = "https://www.googleapis.com/customsearch/v1";
         private readonly int _maxPages;
-        
+
         /// <summary>
         /// The API used. This was the XML API but will likely move towards the CSE Atom api as a default in the future. XML gives a larger page size.
         /// </summary>
@@ -105,11 +106,10 @@ namespace GoogleCSE
         /// <param name="key">Api Key , needed if you want more than 100 queries per day https://console.developers.google.com/apis/credentials </param>
         /// <param name="userIp">The Users Ip for imposing per user limits https://support.google.com/cloud/answer/7035610 </param>
         /// <param name="quotaUser">The users unique name for capping by non web request. https://support.google.com/cloud/answer/7035610 </param>
-        public GoogleSearch(string cx, string key, string hl = "en", Dictionary<string, string> extraOptions = null, int pageSize = 10, int maxPages = 10, int start = 1, GoogleSearchMethod method = GoogleSearchMethod.CSE, string userIp =  null, string quotaUser = null)
+        public GoogleSearch(string cx, string key, string hl = "en", Dictionary<string, string> extraOptions = null, int pageSize = 10, int maxPages = 10, int start = 1, GoogleSearchMethod method = GoogleSearchMethod.CSE, string userIp = null, string quotaUser = null)
         {
-            
+
             Options["client"] = "google-csbe";
-            Options["output"] = "xml_no_dtd";
             Options["cx"] = cx;
             Options["hl"] = hl;
             Options["num"] = pageSize.ToString(CultureInfo.InvariantCulture);
@@ -150,16 +150,7 @@ namespace GoogleCSE
         protected string QueryUrl()
         {
             var sb = new StringBuilder();
-            switch (Method)
-            {
-                case GoogleSearchMethod.XML:
-                    throw new ArgumentException("The XML API is no longer available as it was only for Google Site Search");
-                case GoogleSearchMethod.CSE:
-                    sb.Append(GoogleCseUrl);
-                    Options["alt"] = "ATOM";//force atom. 
-                    Options["prettyPrint"] = "false";// we don't need the result human readable
-                    break;
-            }
+            sb.Append(GoogleCseUrl);
             if (Options.ContainsKey("start"))
             {
                 int start;
@@ -244,102 +235,82 @@ namespace GoogleCSE
                 TotalResults = 0,
                 SearchTime = 0
             };
-            if (Method == GoogleSearchMethod.CSE)
+
+            GoogleJsonFormat jResult = null;
+            try
             {
-                var xResults = XDocument.Load(url);
-                var data = xResults.Root;
-                if (data == null)
-                {
-                    return ret;
-                }
-                var nsOpenSearch = data.GetNamespaceOfPrefix("opensearch");
-                var nsCse = data.GetNamespaceOfPrefix("cse");
-                var nsAtom = data.GetDefaultNamespace();
-              
-                    //get the search information
-                    var searchInformation = data.Element(nsCse + "searchInformation");
-                    if (searchInformation != null)
-                    {
-                        var culture = new CultureInfo("en-us");
-                        var totalResults = searchInformation.Element(nsCse + "totalResults");
-                        if (totalResults != null)
-                            ret.TotalResults = long.Parse(totalResults.Value, culture);
-                        var searchTime = searchInformation.Element(nsCse + "searchTime");
-                        if (searchTime != null)
-                            ret.SearchTime = double.Parse(searchTime.Value,culture);
-                    }
-                    //Get labels
-                    foreach (var label in data.Descendants(nsCse + "facet"))
-                    {
-                        var item = label.Element(nsCse + "item");
-                        if (item != null)
-                        {
-                            var key = item.Attribute("label")?.Value;
-                            var value = item.Attribute("anchor")?.Value;
-                            ret.Labels[key] = value;
-                        }
-                    }
-                    //Get Promotions
-                    foreach (var promotion in data.Descendants(nsCse + "promotion"))
-                    {
-                        var tmpResult = new GoogleSearchResult();
-                        var title = promotion.Element(nsAtom + "title");
-                        if (title != null) tmpResult.Title = title.Value;
-                        var link = promotion.Element(nsAtom + "link");
-                        if (link?.Attribute("href") != null)
-                        {
-                            tmpResult.Url = link.Attribute("href")?.Value;
-                        }
-                        var description = promotion.Element(nsCse + "bodyLine");
-                        if (description != null)
-                        {
-                            tmpResult.Description = description.Attribute("title")?.Value;
-                        }
-                        ret.Promotions.Add(tmpResult);
-                    }
-                
-                //get search Results
-                //foreach (var searchResult in data.Descendants(nsAtom+"entry"))
-                //{
-                //    ret.Results.Add(ParseCseResult(searchResult));
-                //}
-                ret.Results.AddRange(data.Descendants(nsAtom + "entry").Select(ParseCseResult));
-                if (1 < _maxPages)
-                {
-                    var nextPage = data.Elements(nsOpenSearch + "Query").FirstOrDefault(e => e.Attribute("role").Value == "cse:nextPage");
-                    if (nextPage != null)
-                    {
-                        string oldstart = null;
-                        if (Options.ContainsKey("start"))
-                        { 
-                            oldstart = Options["start"];
-                        }
-                        Options["start"] = nextPage.Attribute("startIndex").Value;
-                        try
-                        {
-                            var nextUrl = QueryUrl();
-                            var theRestOfThePages = RecursiveResults(nextUrl, 2);
-                            ret.Results.AddRange(theRestOfThePages);
-                        }
-                        // ReSharper disable once UnusedVariable
-                        catch (ArgumentOutOfRangeException)
-                        {
-                            //it won't search past 100 results
-                        }
-                        if (oldstart != null)
-                        {
-                            Options["start"] = oldstart;
-                        }
-                        else
-                        {
-                            Options.Remove("start");
-                        }
-                    }
-                }
+                var json = new WebClient().DownloadString(url);
+                jResult = JsonConvert.DeserializeObject<GoogleJsonFormat>(json);
             }
-            if (Method == GoogleSearchMethod.XML)
+            catch (Exception)
             {
-                throw new ArgumentException("The XML API is no longer available as it was only for Google Site Search");
+                //This happens if you reach your daily or user limit 
+            }
+
+            if (jResult != null)
+            {
+                //handle the first page
+                ret.Results = jResult.items.Select(r => new GoogleSearchResult()
+                {
+                    Mime = r.mime,
+                    Url = r.link,
+                    Title = r.title,
+                    Description = r.snippet
+                }).ToList();
+
+                if (jResult.queries.nextPage != null && jResult.queries.nextPage.Any())
+                {
+                    //there is a next page
+                    string oldstart = null;
+                    if (Options.ContainsKey("start"))
+                    {
+                        oldstart = Options["start"];
+                    }
+                    Options["start"] = jResult.queries.nextPage[0].startIndex.ToString();
+                    try
+                    {
+                        //let the simpler function handle the next page.
+                        var nextUrl = QueryUrl();
+                        var theRestOfThePages = RecursiveResults(nextUrl, 2);
+                        ret.Results.AddRange(theRestOfThePages);
+                    }
+                    catch (ArgumentOutOfRangeException)
+                    {
+                        //it won't search past 100 results
+                    }
+                    if (oldstart != null)
+                    {
+                        Options["start"] = oldstart;
+                    }
+                    else
+                    {
+                        Options.Remove("start");
+                    }
+                }
+
+                if (jResult.promotions != null)
+                {
+                    ret.Promotions = jResult.promotions.Select(r => new GoogleSearchResult()
+                    {
+                        Mime = "text/html",
+                        Url = r.link,
+                        Title = r.title,
+                        Description = r.bodyLines[0].title
+                    }).ToList();
+                }
+
+                if (jResult.context.facets != null)
+                {
+                    foreach (var labelGroup in jResult.context.facets)
+                    {
+                        foreach (var label in labelGroup)
+                        {
+                            ret.Labels.Add(label.label, label.anchor);
+                        }
+                    }
+                }
+                ret.TotalResults = long.Parse(jResult.searchInformation.totalResults);
+                ret.SearchTime = jResult.searchInformation.searchTime;
             }
             return ret;
         }
@@ -355,113 +326,61 @@ namespace GoogleCSE
         private List<GoogleSearchResult> RecursiveResults(string url, int depth = 1)
         {
             var ret = new List<GoogleSearchResult>();
-            switch (Method)
+            GoogleJsonFormat jResult = null;
+            try
             {
-                case GoogleSearchMethod.XML:
-                    throw new ArgumentException("The XML API is no longer available as it was only for Google Site Search");
-                case GoogleSearchMethod.CSE:
-                    XElement data = null;
-                    try
-                    {
-                        var xResults = XDocument.Load(url);
-                        data = xResults.Root;
-                    }
-                    catch (Exception)
-                    {
-                        //This happens if you reach your daily or user limit 
-                    }
-                    
-                    
-                    if (data == null)
-                    {
-                        return ret;
-                    }
-                    var nsOpenSearch = data.GetNamespaceOfPrefix("opensearch");
-                    var nsAtom = data.GetDefaultNamespace();
-                    ret.AddRange(data.Descendants(nsAtom + "entry").Select(ParseCseResult));
-                    if (depth < _maxPages)
-                    {
-                        var nextPage = data.Elements(nsOpenSearch + "Query").FirstOrDefault(e => e.Attribute("role").Value == "cse:nextPage");
-                        if (nextPage != null)
-                        {
-                            string oldstart = null;
-                            if (Options.ContainsKey("start"))
-                            {
-                                oldstart = Options["start"];
-                            }
-                            Options["start"] = nextPage.Attribute("startIndex").Value;
-                            try
-                            {
-                                var nextUrl = QueryUrl();
-                                var theRestOfThePages = RecursiveResults(nextUrl, 2);
-                                ret.AddRange(theRestOfThePages);
-                            }
-                            catch (ArgumentOutOfRangeException)
-                            {
-                                //it won't search past 100 results
-                            }
-                            if (oldstart != null)
-                            {
-                                Options["start"] = oldstart;
-                            }
-                            else
-                            {
-                                Options.Remove("start");
-                            }
-                        }
-                    }
-                    break;
+                var json = new WebClient().DownloadString(url);
+                jResult = JsonConvert.DeserializeObject<GoogleJsonFormat>(json);
+            }
+            catch (Exception)
+            {
+                //This happens if you reach your daily or user limit 
             }
 
+            if (jResult != null)
+            {
+                ret = jResult.items.Select(r => new GoogleSearchResult()
+                {
+                    Mime = r.mime,
+                    Url = r.link,
+                    Title = r.title,
+                    Description = r.snippet
+                }).ToList();
+
+                if (depth < _maxPages && jResult.queries.nextPage != null && jResult.queries.nextPage.Any())
+                {
+                    //there is a next page
+                    string oldstart = null;
+                    if (Options.ContainsKey("start"))
+                    {
+                        oldstart = Options["start"];
+                    }
+                    Options["start"] = jResult.queries.nextPage[0].startIndex.ToString();
+                    try
+                    {
+                        var nextUrl = QueryUrl();
+                        var theRestOfThePages = RecursiveResults(nextUrl, ++depth);
+                        ret.AddRange(theRestOfThePages);
+                    }
+                    catch (ArgumentOutOfRangeException)
+                    {
+                        //it won't search past 100 results
+                    }
+                    if (oldstart != null)
+                    {
+                        Options["start"] = oldstart;
+                    }
+                    else
+                    {
+                        Options.Remove("start");
+                    }
+                }
+                return ret;
+            }
             return ret;
         }
 
 
-        private GoogleSearchResult ParseCseResult(XElement searchResult)
-        {
-            var nsCse = searchResult.GetNamespaceOfPrefix("cse");
-            var nsAtom = searchResult.GetDefaultNamespace();
-            var tmpResult = new GoogleSearchResult();
-            var title = searchResult.Element(nsAtom + "title");
-            if (title != null) tmpResult.Title = title.Value;
-            var link = searchResult.Element(nsAtom + "link");
-            if (link != null)
-            {
-                if (link.Attribute("href") != null)
-                {
-                    tmpResult.Url = link.Attribute("href").Value;
-                }
-            }
-            var description = searchResult.Element(nsAtom + "summary");
-            if (description != null)
-            {
-                tmpResult.Description = description.Value;
-            }
-            var mime = searchResult.Element(nsCse + "mime");
-            if (mime != null)
-            {
-                tmpResult.Mime = mime.Value;
-            }
-            return tmpResult;
-        }
-
-
-        private GoogleSearchResult ParseXmlResult(XElement r)
-        {
-            var tmpR = new GoogleSearchResult();
-            var xAttribute = r.Attribute("MIME");
-            if (xAttribute != null) tmpR.Mime = xAttribute.Value;
-            var xElement = r.Element("U");
-            if (xElement != null) tmpR.Url = xElement.Value;
-            var element = r.Element("T");
-            if (element != null) tmpR.Title = element.Value;
-            var xElement1 = r.Element("S");// won't work for promoted results but they are just shown inline with normal results
-            if (xElement1 != null) tmpR.Description = xElement1.Value;
-            return tmpR;
-        }
-
-
-        
     }
 
 }

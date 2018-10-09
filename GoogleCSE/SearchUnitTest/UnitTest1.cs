@@ -8,20 +8,7 @@ namespace SearchUnitTest
     [TestClass]
     public class UnitTests
     {
-        [TestMethod]
-        public void TestMethodSimpleXml()
-        {
-            try
-            {
-                var gs = new GoogleSearch(TestConfigs.Cseid, maxPages: 2, pageSize: 20, method: GoogleSearchMethod.XML, key: TestConfigs.Key);
-                var results = gs.Search("garbage");
-                Assert.IsTrue(false); // fail is exception not thrown
-            }
-            catch (Exception e)
-            {
-                Assert.AreEqual("The XML API is no longer available as it was only for Google Site Search",e.Message);
-            }
-        }
+ 
 
         [TestMethod]
         public void TestSimpleCse()
