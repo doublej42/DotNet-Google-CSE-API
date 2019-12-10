@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+  <metadata>
+    <id>GoogleCustomSearchEngine</id>
+    <version>4.0.3</version>
+    <authors>jjacob</authors>
+    <owners>jjacob</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectUrl>https://github.com/doublej42/DotNet-Google-CSE-API</projectUrl>
+    <iconUrl>http://static3.wikia.nocookie.net/__cb20100520131748/logopedia/images/5/5c/Google_logo.png</iconUrl>
+    <description>Fetches Google search results from a custom Google search engine.</description>
+    <summary>Fetches Google search results from a custom Google search engine. Uses uses (CSE) api. Make basic meta data easily available.</summary>
+    <releaseNotes>Updates to json API</releaseNotes>
+    <tags>Google search</tags>
+    <dependencies>
+      <dependency id="Newtonsoft.Json" version="11.0.2" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="lib\net45\GoogleCSE.dll" target="lib\net45\GoogleCSE.dll" />
+    <file src="lib\net45\GoogleCSE.pdb" target="lib\net45\GoogleCSE.pdb" />
+  </files>
+</package>

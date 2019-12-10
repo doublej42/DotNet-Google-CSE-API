@@ -20,7 +20,7 @@ namespace SearchUnitTest
             Assert.IsTrue(results.Any());
             Assert.IsTrue(results.Count <= 20);
             Assert.IsTrue(results.Count > 10);
-            results = gs.Search("dam", "Businesses");
+            results = gs.Search("pizza", "Businesses");
             Assert.IsTrue(results.Count > 1);
             Assert.IsTrue(results.Count < 100);
         }
@@ -91,9 +91,9 @@ namespace SearchUnitTest
             Assert.IsTrue(gs.Options["start"] == "11");
             Assert.AreEqual(results.Results[10].Url,results2.Results[0].Url);
             gs.Options.Remove("start");
-            results = gs.SearchDetailed("dam", "Businesses");
+            results = gs.SearchDetailed("pizza", "businesses");
             Assert.IsTrue(results.Results.Any());
-            Assert.IsTrue(results.Results.Count == results.TotalResults);
+            Assert.IsTrue(results.Results.Count <= results.TotalResults);
         }
 
        

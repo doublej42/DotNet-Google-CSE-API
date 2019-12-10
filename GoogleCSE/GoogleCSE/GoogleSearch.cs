@@ -306,7 +306,7 @@ namespace GoogleCSE
                     }).ToList();
                 }
 
-                if (jResult.context.facets != null)
+                if (jResult.context != null && jResult.context.facets != null)
                 {
                     foreach (var labelGroup in jResult.context.facets)
                     {
