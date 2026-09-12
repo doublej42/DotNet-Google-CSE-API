@@ -1,37 +1,61 @@
-DotNet-Google-CSE-API
-=====================
+DotNet Google Vertex AI Search API
+==================================
 
-Simple wrapper class for basic searching using Google Custom Search Engine for Business. 
+A lightweight C# wrapper for Google Vertex AI Search. The retired Google Custom Search Engine API is not supported.
 
-Note the default is to search 10 pages of results.
+## Authentication
 
-It can't return more than 100 results due to Google api.
+The client accepts exactly these credentials:
 
-Example Usage:
+- `PROJECT_ID`: Google Cloud project ID
+- `APP_ID`: Vertex AI Search app/engine ID
+- `API_KEY`: Google Cloud API key with Discovery Engine API access
+
+```powershell
+$env:PROJECT_ID="your-project-id"
+$env:APP_ID="your-app-id"
+$env:API_KEY="your-api-key"
+```
+
+## Usage
+
 ```csharp
-var gs = new GoogleSearch("YOUR SEARCH ID",key: "YOURAPIKEY"); 
-//basic search
-var results = gs.Search("SEARCH TERM");
-//search in a refinment label
-var results2 = gs.SearchDetailed("SEARCH TERM", "LABEL");
+using GoogleCSE;
 
-var gs2 = new GoogleSearch("YOUR SEARCH ID",  maxPages: 2, pageSize: 20, method: GoogleSearchMethod.XML)
-var fortyResults = gs2.SearchDetailed("SEARCH TERM"); 
+var searcher = new GoogleSearch(
+    projectId: "your-project-id",
+    appId: "your-app-id",
+    apiKey: "YOUR_API_KEY");
+
+var results = searcher.Search("dotnet tutorials");
+
+foreach (var item in results)
+{
+    Console.WriteLine($"{item.Title}: {item.Url}");
+}
+```
+
+To limit a website search to a URL pattern, pass `siteSearch` as the second argument:
+
+```csharp
+var results = searcher.Search(
+    "dotnet tutorials",
+    siteSearch: "https://example.com/docs/*");
+```
+
+This sends the Vertex AI Search filter expression `siteSearch:"https://example.com/docs/*"`.
+
+Optional constructor arguments configure the Vertex request: `location`, `pageSize`, `maxPages`, and `start`.
+
+## Test Application
+
+The included console application reads only `PROJECT_ID`, `APP_ID`, and `API_KEY`.
+
+```powershell
+dotnet run --project GoogleCSE/GoogleCSE.TestApp/GoogleCSE.TestApp.csproj
 ```
 
 
-Install via https://www.nuget.org/packages/GoogleCustomSearchEngine/
+See:
 
-If there is an issue due to user limits or daily limits it will fail with as many results as it could get before the limit was reached.
-
-```csharp
-var gs = new GoogleSearch("YOUR SEARCH ID", maxPages: 2, pageSize: 10, key: "YOURAPIKEY", method: GoogleSearchMethod.CSE,userIp: "192.168.1.101" );
-```
-
-Search for just PDF files
-
-```csharp
-var gs = new GoogleSearch("YOUR SEARCH ID", maxPages: 1, pageSize: 5, key: "YOURAPIKEY");
-gs.Options.Add("fileType","pdf");
-var results = gs.Search("dam");
-```
+https://docs.cloud.google.com/generative-ai-app-builder/docs/migrate-from-cse#api-key-deploy

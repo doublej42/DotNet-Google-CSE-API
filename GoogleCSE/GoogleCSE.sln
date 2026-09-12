@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GoogleCSE", "GoogleCSE\Goog
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SearchUnitTest", "SearchUnitTest\SearchUnitTest.csproj", "{9284322D-A884-4AD7-A6F9-F327C8D2D0F9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GoogleCSE.TestApp", "GoogleCSE.TestApp\GoogleCSE.TestApp.csproj", "{A58C6B99-19E4-429C-8A8B-5E10D2FA7C6D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{9284322D-A884-4AD7-A6F9-F327C8D2D0F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9284322D-A884-4AD7-A6F9-F327C8D2D0F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9284322D-A884-4AD7-A6F9-F327C8D2D0F9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A58C6B99-19E4-429C-8A8B-5E10D2FA7C6D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A58C6B99-19E4-429C-8A8B-5E10D2FA7C6D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A58C6B99-19E4-429C-8A8B-5E10D2FA7C6D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A58C6B99-19E4-429C-8A8B-5E10D2FA7C6D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

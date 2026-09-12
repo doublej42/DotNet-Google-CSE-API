@@ -1,12 +1,10 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
 using System.Net;
 using System.Text;
 using System.Web;
-using System.Xml.Linq;
 
 namespace GoogleCSE
 {
@@ -16,7 +14,7 @@ namespace GoogleCSE
     public class GoogleSearchResult
     {
         /// <summary>
-        /// The mine type of the resulting link
+        /// The mime type or format of the resulting link
         /// </summary>
         public string Mime { get; set; }
         /// <summary>
@@ -28,373 +26,329 @@ namespace GoogleCSE
         /// </summary>
         public string Title { get; set; }
         /// <summary>
-        /// Description that should show in results
+        /// Description or snippet that should show in results
         /// </summary>
         public string Description { get; set; }
     }
 
     /// <summary>
-    /// A collection for storing more advanced information about the search.
+    /// A collection for storing search results and metadata.
     /// </summary>
     public class GoogleSearchResults
     {
         /// <summary>
-        /// The normal organic search results
+        /// The organic search results
         /// </summary>
         public List<GoogleSearchResult> Results { get; set; }
         /// <summary>
-        /// Specially designed search results. Advertisements. 
+        /// Promotional or advertisement results. Vertex AI Search does not return promotions.
         /// </summary>
         public List<GoogleSearchResult> Promotions { get; set; }
         /// <summary>
-        /// Possible search refinement labels 
-        /// </summary>
-        public Dictionary<string, string> Labels { get; set; }
-        /// <summary>
-        /// Total results, all these results might not actually be available.
+        /// Total estimated results
         /// </summary>
         public long TotalResults { get; set; }
         /// <summary>
-        /// Amount of time taken to preform the search.
+        /// Amount of time taken to perform the search (in seconds).
         /// </summary>
         public double SearchTime { get; set; }
     }
 
-
-    // ReSharper disable InconsistentNaming
     /// <summary>
-    /// No longer used, left in as to not change the api.
-    /// </summary>
-    public enum GoogleSearchMethod { XML, CSE };
-    // ReSharper restore InconsistentNaming
-
-    /// <summary>
-    /// Class to instantiate for searching a Google custom search engine. You will need to provide your cx
-    /// XML Docs: https://developers.google.com/custom-search/docs/xml_results
-    /// See Also Google api docs at : https://developers.google.com/custom-search/json-api/v1/overview
-    /// API Details: https://developers.google.com/custom-search/json-api/v1/reference/cse/list
-    /// You can get your CSE from https://www.google.com/cse/
+    /// Class to instantiate for searching using Google Vertex AI Search.
     /// </summary>
     public class GoogleSearch
     {
-        private const string GoogleUrl = "http://www.google.com/search";
-        private const string GoogleCseUrl = "https://www.googleapis.com/customsearch/v1";
-        private readonly int _maxPages;
+        private int _maxPages;
 
         /// <summary>
-        /// The API used. This was the XML API but will likely move towards the CSE Atom api as a default in the future. XML gives a larger page size.
+        /// GCP Project ID or Project Number for Google Vertex AI Search.
         /// </summary>
-        public GoogleSearchMethod Method;
+        public string ProjectId { get; set; }
 
         /// <summary>
-        /// Options used to build the URL. 
+        /// App ID in Google Vertex AI Search.
         /// </summary>
-        public readonly Dictionary<string, string> Options = new Dictionary<string, string>();
+        public string AppId { get; set; }
 
         /// <summary>
-        /// Create a Google searcher. 
+        /// Datastore location/region (e.g., "global", "us", "eu"). Default is "global".
         /// </summary>
-        /// <param name="cx">Your search engine ID from https://www.google.com/cse/ </param>
-        /// <param name="hl">(optional) language</param>
-        /// <param name="extraOptions">(optional)If you need to supply more custom options passed to google please include them here. These options will override any defaults</param>
-        /// <param name="pageSize">(optional) Number of results per page, Default are 10, this is also the max</param>
-        /// <param name="maxPages">(optional) Number of pages to grab. Larger number will be slower.  Also each page is a new search on your paid search limit. Default is 10 as this will give you the max 100 results.</param>
-        /// <param name="start">The result offset, use to page through results. WARNING: CSE starts at 1 but XML starts at zero. If you want the 11th result (page 2) on CSE set this to 11. On XML set this to 10 </param>
-        /// <param name="method">(optional) API Used to gather the results. Default isCSE https://developers.google.com/custom-search/json-api/v1/reference/cse/list the other option was XML but is no longer supported by google. https://developers.google.com/custom-search/docs/xml_results 
-        /// Only the CSE interface gives promotions as a separate object. Note this is a change of default from old versions.
-        /// </param>
-        /// <param name="key">Api Key , needed if you want more than 100 queries per day https://console.developers.google.com/apis/credentials </param>
-        /// <param name="userIp">The Users Ip for imposing per user limits https://support.google.com/cloud/answer/7035610 </param>
-        /// <param name="quotaUser">The users unique name for capping by non web request. https://support.google.com/cloud/answer/7035610 </param>
-        public GoogleSearch(string cx, string key, string hl = "en", Dictionary<string, string> extraOptions = null, int pageSize = 10, int maxPages = 10, int start = 1, GoogleSearchMethod method = GoogleSearchMethod.CSE, string userIp = null, string quotaUser = null)
+        public string Location { get; set; } = "global";
+
+        private const string ServingConfigId = "default_search";
+
+        /// <summary>
+        /// GCP API key for authorization.
+        /// </summary>
+        public string ApiKey { get; set; }
+
+        /// <summary>
+        /// Results per page (default: 10).
+        /// </summary>
+        public int PageSize { get; set; } = 10;
+
+        /// <summary>
+        /// Offset starting index (1-based, default: 1).
+        /// </summary>
+        public int Start { get; set; } = 1;
+
+        /// <summary>
+        /// Maximum number of pages to retrieve.
+        /// </summary>
+        public int MaxPages
         {
-
-            Options["client"] = "google-csbe";
-            Options["cx"] = cx;
-            Options["hl"] = hl;
-            Options["num"] = pageSize.ToString(CultureInfo.InvariantCulture);
-            if (start > 1)
-            {
-                Options["start"] = start.ToString(CultureInfo.InvariantCulture);
-            }
-            if (!string.IsNullOrEmpty(key))
-            {
-                Options["key"] = key;
-            }
-            if (!string.IsNullOrEmpty(userIp))
-            {
-                Options["userIP"] = key;
-            }
-            if (!string.IsNullOrEmpty(quotaUser))
-            {
-                Options["quotaUser"] = key;
-            }
-            _maxPages = maxPages;
-            if (_maxPages * pageSize > 100)
-            {
-                //will crash if you ask for more than the first 100 results. This is a Google change.
-                _maxPages = 100 / pageSize;
-            }
-            Method = method;
-            if (extraOptions == null) return;
-            foreach (var option in extraOptions)
-            {
-                Options[option.Key] = option.Value;
-            }
+            get => _maxPages;
+            set => _maxPages = value;
         }
 
         /// <summary>
-        /// Build a query URL
+        /// <summary>
+        /// Create a Google Vertex AI Search client.
         /// </summary>
-        /// <returns>string: The URL used by the various search functions</returns>
-        protected string QueryUrl()
+        /// <param name="projectId">Your GCP Project ID or Project Number</param>
+        /// <param name="appId">Your Vertex AI Search App ID</param>
+        /// <param name="apiKey">Your GCP API Key</param>
+        /// <param name="location">(optional) GCP region/location (default: "global")</param>
+        /// <param name="pageSize">(optional) Results per page, default 10</param>
+        /// <param name="maxPages">(optional) Max pages to fetch, default 10</param>
+        /// <param name="start">(optional) Offset index starting at 1, default 1</param>
+        public GoogleSearch(
+            string projectId,
+            string appId,
+            string apiKey,
+            string location = "global",
+            int pageSize = 10,
+            int maxPages = 10,
+            int start = 1)
         {
-            var sb = new StringBuilder();
-            sb.Append(GoogleCseUrl);
-            if (Options.ContainsKey("start"))
-            {
-                int start;
-                if (int.TryParse(Options["start"], out start))
-                {
-                    if (start >= 100)
-                    {
-                        throw new ArgumentOutOfRangeException();
-                    }
-                    start = start - 1; // zero indexed
-                    var num = int.Parse(Options["num"]);
-                    if (start + num > 100) //Google 100 result limit cases error 400
-                    {
-                        Options["num"] = (100 - start).ToString();
-                    }
-                }
-            }
-            for (var i = 0; i < Options.Keys.Count; i++)
-            {
-                var key = Options.Keys.ElementAt(i);
-                sb.Append(i == 0 ? '?' : '&');
-                sb.Append(key);
-                sb.Append('=');
-                sb.Append(HttpUtility.UrlEncode(Options[key]));
-            }
-            return sb.ToString();
+            if (string.IsNullOrWhiteSpace(projectId)) throw new ArgumentException("PROJECT_ID is required.", nameof(projectId));
+            if (string.IsNullOrWhiteSpace(appId)) throw new ArgumentException("APP_ID is required.", nameof(appId));
+            if (string.IsNullOrWhiteSpace(apiKey)) throw new ArgumentException("API_KEY is required.", nameof(apiKey));
+
+            ProjectId = projectId;
+            AppId = appId;
+            ApiKey = apiKey;
+            Location = string.IsNullOrEmpty(location) ? "global" : location;
+            PageSize = pageSize > 0 ? pageSize : 10;
+            _maxPages = maxPages > 0 ? maxPages : 10;
+            Start = start > 0 ? start : 1;
         }
 
         /// <summary>
-        /// Get the search results 
+        /// Get the search results.
         /// </summary>
         /// <param name="term">Term to search</param>
-        /// <param name="label">If you are using custom refinements this will help you search part of your site</param>
+        /// <param name="siteSearch">URL pattern that limits the search, such as "https://example.com/docs/*"</param>
         /// <returns>List of Search Results</returns>
-        public List<GoogleSearchResult> Search(string term, string label = "")
+        public List<GoogleSearchResult> Search(string term, string siteSearch = "")
         {
-
-            if (!string.IsNullOrWhiteSpace(label))
-            {
-                Options["q"] = term + " more:" + label;
-            }
-            else
-            {
-                Options["q"] = term;
-            }
-            var url = QueryUrl();
-            return RecursiveResults(url);
+            return SearchVertexDetailed(term, siteSearch).Results;
         }
 
         /// <summary>
-        /// Searches Google and returns a Google search results object. This includes details about refinements (labels) and total results, time to search (CSE only) and promotional results.
+        /// Searches and returns detailed search results (including total count, execution time, etc.).
         /// </summary>
         /// <param name="term">Term to search</param>
-        /// <param name="label">If you are using custom refinements this will help you search part of your site</param>
-        /// <returns>GoogleSearchResults object. See object for more details</returns>
-        public GoogleSearchResults SearchDetailed(string term, string label = "")
+        /// <param name="siteSearch">URL pattern that limits the search, such as "https://example.com/docs/*"</param>
+        /// <returns>GoogleSearchResults object</returns>
+        public GoogleSearchResults SearchDetailed(string term, string siteSearch = "")
         {
-            if (!string.IsNullOrWhiteSpace(label))
-            {
-                Options["q"] = term + " more:" + label;
-            }
-            else
-            {
-                Options["q"] = term;
-            }
-            var url = QueryUrl();
-            return RecursiveResultDetailed(url);
+            return SearchVertexDetailed(term, siteSearch);
         }
 
-        /// <summary>
-        /// Used to search multiple pages and combine them with details
-        /// </summary>
-        /// <param name="url"></param>
-        /// <returns></returns>
-        private GoogleSearchResults RecursiveResultDetailed(string url)
+        private GoogleSearchResults SearchVertexDetailed(string term, string siteSearch = "")
         {
             var ret = new GoogleSearchResults
             {
                 Results = new List<GoogleSearchResult>(),
                 Promotions = new List<GoogleSearchResult>(),
-                Labels = new Dictionary<string, string>(),
                 TotalResults = 0,
                 SearchTime = 0
             };
 
-            GoogleJsonFormat jResult = null;
-            try
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            int startOffset = Start > 0 ? Start - 1 : 0;
+
+            int currentOffset = startOffset;
+            int pageCount = 0;
+
+            while (pageCount < _maxPages)
             {
-                using (var webClient = new WebClient())
+                VertexSearchResponse response = null;
+                try
                 {
-                    webClient.Encoding = Encoding.UTF8;
-                    var json = webClient.DownloadString(url);
-                    jResult = JsonConvert.DeserializeObject<GoogleJsonFormat>(json);
+                    response = FetchVertexPage(term, siteSearch, currentOffset, PageSize);
                 }
-            }
-            catch (Exception)
-            {
-                //This happens if you reach your daily or user limit 
-            }
-
-            if (jResult != null)
-            {
-                //handle the first page
-                if (jResult.items != null)
+                catch (WebException webEx)
                 {
-                    ret.Results = jResult.items.Select(r => new GoogleSearchResult()
+                    string errorDetails = webEx.Message;
+                    if (webEx.Response != null)
                     {
-                        Mime = r.mime,
-                        Url = r.link,
-                        Title = r.title,
-                        Description = r.snippet
-                    }).ToList();
-                }
-
-                if (jResult.queries.nextPage != null && jResult.queries.nextPage.Any())
-                {
-                    //there is a next page
-                    string oldstart = null;
-                    if (Options.ContainsKey("start"))
-                    {
-                        oldstart = Options["start"];
-                    }
-                    Options["start"] = jResult.queries.nextPage[0].startIndex.ToString();
-                    try
-                    {
-                        //let the simpler function handle the next page.
-                        var nextUrl = QueryUrl();
-                        var theRestOfThePages = RecursiveResults(nextUrl, 2);
-                        ret.Results.AddRange(theRestOfThePages);
-                    }
-                    catch (ArgumentOutOfRangeException)
-                    {
-                        //it won't search past 100 results
-                    }
-                    if (oldstart != null)
-                    {
-                        Options["start"] = oldstart;
-                    }
-                    else
-                    {
-                        Options.Remove("start");
-                    }
-                }
-
-                if (jResult.promotions != null)
-                {
-                    ret.Promotions = jResult.promotions.Select(r => new GoogleSearchResult()
-                    {
-                        Mime = "text/html",
-                        Url = r.link,
-                        Title = r.title,
-                        Description = r.bodyLines[0].title
-                    }).ToList();
-                }
-
-                if (jResult.context != null && jResult.context.facets != null)
-                {
-                    foreach (var labelGroup in jResult.context.facets)
-                    {
-                        foreach (var label in labelGroup)
+                        try
                         {
-                            ret.Labels.Add(label.label, label.anchor);
+                            using (var reader = new System.IO.StreamReader(webEx.Response.GetResponseStream()))
+                            {
+                                errorDetails += " Details: " + reader.ReadToEnd();
+                            }
                         }
+                        catch { }
                     }
+
+                    if (pageCount == 0)
+                    {
+                        throw new Exception($"Google Vertex Search API Error: {errorDetails}", webEx);
+                    }
+                    break;
                 }
-                ret.TotalResults = long.Parse(jResult.searchInformation.totalResults);
-                ret.SearchTime = jResult.searchInformation.searchTime;
+                catch (Exception ex)
+                {
+                    if (pageCount == 0)
+                    {
+                        throw new Exception($"Google Vertex Search Error: {ex.Message}", ex);
+                    }
+                    break;
+                }
+
+                if (response == null) break;
+
+                ret.TotalResults = response.TotalSize;
+
+                if (response.Results == null || response.Results.Count == 0)
+                {
+                    break;
+                }
+
+                foreach (var item in response.Results)
+                {
+                    var mapped = MapVertexResultToGoogleSearchResult(item);
+                    ret.Results.Add(mapped);
+                }
+
+                currentOffset += response.Results.Count;
+                pageCount++;
+
+                if (response.Results.Count < PageSize || currentOffset >= response.TotalSize)
+                {
+                    break;
+                }
             }
+
+            sw.Stop();
+            ret.SearchTime = sw.Elapsed.TotalSeconds;
+
             return ret;
         }
 
-
-
-        /// <summary>
-        /// Walk through pages of results
-        /// </summary>
-        /// <param name="url"></param>
-        /// <param name="depth"></param>
-        /// <returns></returns>
-        private List<GoogleSearchResult> RecursiveResults(string url, int depth = 1)
+        private VertexSearchResponse FetchVertexPage(string term, string siteSearch, int offset, int pageSize)
         {
-            var ret = new List<GoogleSearchResult>();
-            GoogleJsonFormat jResult = null;
-            try
+            string url = GetVertexEndpointUrl();
+
+            string queryText = term;
+            string filterText = null;
+
+            if (!string.IsNullOrWhiteSpace(siteSearch))
             {
-                using (var webClient = new WebClient())
-                {
-                    webClient.Encoding = Encoding.UTF8;
-                    var json = webClient.DownloadString(url);
-                    jResult = JsonConvert.DeserializeObject<GoogleJsonFormat>(json);
-                }
-            }
-            catch (Exception)
-            {
-                //This happens if you reach your daily or user limit 
+                filterText = $"siteSearch:\"{EscapeFilterValue(siteSearch)}\"";
             }
 
-            if (jResult != null)
+            var requestBodyObj = new VertexSearchRequest
             {
-                if (jResult.items != null)
+                ServingConfig = GetServingConfigResourceName(),
+                Query = queryText,
+                PageSize = pageSize,
+                Offset = offset,
+                Filter = filterText,
+                ContentSearchSpec = new VertexContentSearchSpec
                 {
-                    ret = jResult.items.Select(r => new GoogleSearchResult()
-                    {
-                        Mime = r.mime,
-                        Url = r.link,
-                        Title = r.title,
-                        Description = r.snippet
-                    }).ToList();
+                    SnippetSpec = new VertexSnippetSpec { ReturnSnippet = true }
                 }
+            };
 
-                if (depth < _maxPages && jResult.queries.nextPage != null && jResult.queries.nextPage.Any())
-                {
-                    //there is a next page
-                    string oldstart = null;
-                    if (Options.ContainsKey("start"))
-                    {
-                        oldstart = Options["start"];
-                    }
-                    Options["start"] = jResult.queries.nextPage[0].startIndex.ToString();
-                    try
-                    {
-                        var nextUrl = QueryUrl();
-                        var theRestOfThePages = RecursiveResults(nextUrl, ++depth);
-                        ret.AddRange(theRestOfThePages);
-                    }
-                    catch (ArgumentOutOfRangeException)
-                    {
-                        //it won't search past 100 results
-                    }
-                    if (oldstart != null)
-                    {
-                        Options["start"] = oldstart;
-                    }
-                    else
-                    {
-                        Options.Remove("start");
-                    }
-                }
-                return ret;
+            string jsonBody = JsonConvert.SerializeObject(requestBodyObj);
+
+            using (var webClient = new WebClient())
+            {
+                webClient.Encoding = Encoding.UTF8;
+                webClient.Headers[HttpRequestHeader.ContentType] = "application/json; charset=utf-8";
+
+                string responseJson = webClient.UploadString(url, "POST", jsonBody);
+                return JsonConvert.DeserializeObject<VertexSearchResponse>(responseJson);
             }
-            return ret;
         }
 
+        private static string EscapeFilterValue(string value)
+        {
+            return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
+        }
+
+        public string GetServingConfigResourceName()
+        {
+            string location = string.IsNullOrEmpty(Location) ? "global" : Location;
+            return $"projects/{ProjectId}/locations/{location}/collections/default_collection/engines/{AppId}/servingConfigs/{ServingConfigId}";
+        }
+
+        private string GetVertexEndpointUrl()
+        {
+            string resourceName = GetServingConfigResourceName();
+            string baseUrl = $"https://discoveryengine.googleapis.com/v1/{resourceName}:searchLite";
+
+            if (!string.IsNullOrEmpty(ApiKey))
+            {
+                baseUrl += "?key=" + HttpUtility.UrlEncode(ApiKey);
+            }
+
+            return baseUrl;
+        }
+
+        private GoogleSearchResult MapVertexResultToGoogleSearchResult(VertexSearchResultItem item)
+        {
+            var res = new GoogleSearchResult();
+            if (item == null || item.Document == null) return res;
+
+            JObject derived = item.Document.DerivedStructData != null ? JObject.FromObject(item.Document.DerivedStructData) : null;
+            JObject structData = item.Document.StructData != null ? JObject.FromObject(item.Document.StructData) : null;
+
+            // 1. Title
+            res.Title = derived?["title"]?.ToString()
+                     ?? structData?["title"]?.ToString()
+                     ?? item.Document.Id
+                     ?? string.Empty;
+
+            // 2. URL
+            res.Url = derived?["link"]?.ToString()
+                   ?? derived?["url"]?.ToString()
+                   ?? structData?["link"]?.ToString()
+                   ?? structData?["url"]?.ToString()
+                   ?? item.Document.Name
+                   ?? string.Empty;
+
+            // 3. Description / Snippet
+            string snippet = null;
+            if (derived?["snippets"] is JArray snippets && snippets.Count > 0)
+            {
+                snippet = snippets[0]?["snippet"]?.ToString() ?? snippets[0]?["htmlSnippet"]?.ToString();
+            }
+            if (string.IsNullOrEmpty(snippet) && derived?["extractive_answers"] is JArray answers && answers.Count > 0)
+            {
+                snippet = answers[0]?["content"]?.ToString();
+            }
+            if (string.IsNullOrEmpty(snippet))
+            {
+                snippet = structData?["description"]?.ToString() ?? structData?["snippet"]?.ToString();
+            }
+            res.Description = snippet ?? string.Empty;
+
+            // 4. Mime
+            res.Mime = derived?["mime"]?.ToString()
+                    ?? derived?["fileFormat"]?.ToString()
+                    ?? structData?["mime"]?.ToString()
+                    ?? structData?["fileFormat"]?.ToString()
+                    ?? string.Empty;
+
+            return res;
+        }
 
     }
-
 }
