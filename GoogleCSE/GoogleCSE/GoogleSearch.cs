@@ -41,7 +41,7 @@ namespace GoogleCSE
         /// </summary>
         public List<GoogleSearchResult> Results { get; set; }
         /// <summary>
-        /// Promotional or advertisement results. Vertex AI Search does not return promotions.
+        /// Promotional or advertisement results. Google Cloud Agent Search does not return promotions.
         /// </summary>
         public List<GoogleSearchResult> Promotions { get; set; }
         /// <summary>
@@ -55,19 +55,19 @@ namespace GoogleCSE
     }
 
     /// <summary>
-    /// Class to instantiate for searching using Google Vertex AI Search.
+    /// Client for searching with the Google Cloud Agent Search API.
     /// </summary>
     public class GoogleSearch
     {
         private int _maxPages;
 
         /// <summary>
-        /// GCP Project ID or Project Number for Google Vertex AI Search.
+        /// Google Cloud project ID or project number for Agent Search.
         /// </summary>
         public string ProjectId { get; set; }
 
         /// <summary>
-        /// App ID in Google Vertex AI Search.
+        /// Agent Search engine ID.
         /// </summary>
         public string AppId { get; set; }
 
@@ -104,10 +104,10 @@ namespace GoogleCSE
 
         /// <summary>
         /// <summary>
-        /// Create a Google Vertex AI Search client.
+        /// Create a Google Cloud Agent Search client.
         /// </summary>
         /// <param name="projectId">Your GCP Project ID or Project Number</param>
-        /// <param name="appId">Your Vertex AI Search App ID</param>
+        /// <param name="appId">Your Agent Search engine ID</param>
         /// <param name="apiKey">Your GCP API Key</param>
         /// <param name="location">(optional) GCP region/location (default: "global")</param>
         /// <param name="pageSize">(optional) Results per page, default 10</param>
@@ -198,7 +198,7 @@ namespace GoogleCSE
 
                     if (pageCount == 0)
                     {
-                        throw new Exception($"Google Vertex Search API Error: {errorDetails}", webEx);
+                        throw new Exception($"Google Agent Search API Error: {errorDetails}", webEx);
                     }
                     break;
                 }
@@ -206,7 +206,7 @@ namespace GoogleCSE
                 {
                     if (pageCount == 0)
                     {
-                        throw new Exception($"Google Vertex Search Error: {ex.Message}", ex);
+                        throw new Exception($"Google Agent Search Error: {ex.Message}", ex);
                     }
                     break;
                 }

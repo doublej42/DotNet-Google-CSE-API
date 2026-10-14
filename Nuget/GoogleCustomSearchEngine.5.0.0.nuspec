@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+  <metadata>
+    <id>GoogleCustomSearchEngine</id>
+    <version>5.0.0</version>
+    <authors>jjacob</authors>
+    <owners>jjacob</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectUrl>https://github.com/doublej42/DotNet-Google-CSE-API</projectUrl>
+    <iconUrl>http://static3.wikia.nocookie.net/__cb20100520131748/logopedia/images/5/5c/Google_logo.png</iconUrl>
+    <description>A .NET client that fetches search results from the Google Cloud Agent Search API, formerly Vertex AI Search.</description>
+    <summary>Search and result metadata access through the Google Cloud Agent Search API.</summary>
+    <releaseNotes>Moves to the Google Cloud Agent Search API and updates Newtonsoft.Json to 13.0.4.</releaseNotes>
+    <tags>Google Agent Search Vertex AI Search</tags>
+    <dependencies>
+      <dependency id="Newtonsoft.Json" version="13.0.4" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="lib\net472\GoogleCSE.dll" target="lib\net472\GoogleCSE.dll" />
+    <file src="lib\net472\GoogleCSE.pdb" target="lib\net472\GoogleCSE.pdb" />
+  </files>
+</package>

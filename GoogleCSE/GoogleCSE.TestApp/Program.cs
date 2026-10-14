@@ -9,7 +9,7 @@ namespace GoogleCSE.TestApp
         static void Main(string[] args)
         {
             Console.WriteLine("=================================================");
-            Console.WriteLine("  Google Vertex AI Search (.NET Wrapper) Tester  ");
+            Console.WriteLine("  Google Cloud Agent Search (.NET Wrapper) Tester  ");
             Console.WriteLine("=================================================\n");
 
             string projectId = Environment.GetEnvironmentVariable("PROJECT_ID");

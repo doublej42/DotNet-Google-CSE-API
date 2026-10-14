@@ -1,14 +1,14 @@
-DotNet Google Vertex AI Search API
+DotNet Google Cloud Agent Search API
 ==================================
 
-A lightweight C# wrapper for Google Vertex AI Search. The retired Google Custom Search Engine API is not supported.
+A lightweight C# client for the Google Cloud Agent Search API (formerly Vertex AI Search). The retired Google Custom Search Engine API is not supported.
 
 ## Authentication
 
 The client accepts exactly these credentials:
 
 - `PROJECT_ID`: Google Cloud project ID
-- `APP_ID`: Vertex AI Search app/engine ID
+- `APP_ID`: Agent Search engine ID
 - `API_KEY`: Google Cloud API key with Discovery Engine API access
 
 ```powershell
@@ -43,9 +43,9 @@ var results = searcher.Search(
     siteSearch: "https://example.com/docs/*");
 ```
 
-This sends the Vertex AI Search filter expression `siteSearch:"https://example.com/docs/*"`.
+This sends the Agent Search filter expression `siteSearch:"https://example.com/docs/*"`.
 
-Optional constructor arguments configure the Vertex request: `location`, `pageSize`, `maxPages`, and `start`.
+Optional constructor arguments configure the Agent Search request: `location`, `pageSize`, `maxPages`, and `start`.
 
 ## Test Application
 
